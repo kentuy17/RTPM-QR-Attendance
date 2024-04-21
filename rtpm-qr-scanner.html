@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Scanner</title>
+</head>
+
+<body>
+  <div id='app-data'>
+    <div id='sheet1'></div>
+    <div id="sheet2"></div>
+  </div>
+  <!-- use version 0.20.2 -->
+  <script lang="javascript"
+    src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"
+    defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.8/axios.js"
+    integrity="sha512-pmaEGtUAy7E5gRmwjLqQAD/QWw0dL4Z59b6b+2HQkqQwQ+HcPLLb9/KbUNo5zr10WuXmbivK9nYVZOyDkMgZMg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    const fileURL = "https://docs.google.com/spreadsheets/d/1GGprNdVBc8Ej4NX7Cgbpt9USdeJGUSKo7sIkyeJxzRM/edit?pli=1#gid=0";
+
+    var textFile = null;
+    function makeTextFile(text) {
+      var data = new Blob([text], { type: 'text/plain' });
+
+      // If we are replacing a previously generated file we need to
+      // manually revoke the object URL to avoid memory leaks.
+      if (textFile !== null) {
+        window.URL.revokeObjectURL(textFile);
+      }
+
+      textFile = window.URL.createObjectURL(data);
+
+      // returns a URL you can use as a href
+      return textFile;
+    };
+
+
+    axios.get(fileURL, { encoding: null }, function (err, res, data) {
+      if (err || res.statusCode != 200) {
+        console.log(res.statusCode);
+        return;
+      }
+      const buff = Buffer.from(data);
+      const workbook = XLSX.read(buff);
+
+      var sheet1 = workbook.Sheets[workbook.SheetNames[0]];
+      var sheet2 = workbook.Sheets[workbook.SheetNames[1]];
+      return sheet1;
+    }).then(async (data) => {
+      // let file = await makeTextFile(data.data);
+      // console.log(file);
+      console.log(data.data);
+    })
+
+
+  </script>
+</body>
+
+</html>
