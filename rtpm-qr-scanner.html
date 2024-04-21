@@ -2,14 +2,14 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>QR Scanner</title>
 </head>
 
 <body>
-  <div id='app-data'>
-    <div id='sheet1'></div>
+  <div id="app-data">
+    <pre id="sheet1"></pre>
     <div id="sheet2"></div>
   </div>
   <!-- use version 0.20.2 -->
@@ -17,46 +17,93 @@
     src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"
     defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.8/axios.js"
-    integrity="sha512-pmaEGtUAy7E5gRmwjLqQAD/QWw0dL4Z59b6b+2HQkqQwQ+HcPLLb9/KbUNo5zr10WuXmbivK9nYVZOyDkMgZMg=="
-    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    defer></script>
   <script>
-    const fileURL = "https://docs.google.com/spreadsheets/d/1GGprNdVBc8Ej4NX7Cgbpt9USdeJGUSKo7sIkyeJxzRM/edit?pli=1#gid=0";
+    document.addEventListener('DOMContentLoaded', function () {
+      const fileURL =
+        'https://docs.google.com/spreadsheets/d/1GGprNdVBc8Ej4NX7Cgbpt9USdeJGUSKo7sIkyeJxzRM/edit?pli=1#gid=0';
 
-    var textFile = null;
-    function makeTextFile(text) {
-      var data = new Blob([text], { type: 'text/plain' });
+      var textFile = null;
+      function makeTextFile(text) {
+        var data = new Blob([text], { type: 'text/html' });
 
-      // If we are replacing a previously generated file we need to
-      // manually revoke the object URL to avoid memory leaks.
-      if (textFile !== null) {
-        window.URL.revokeObjectURL(textFile);
+        // If we are replacing a previously generated file we need to
+        // manually revoke the object URL to avoid memory leaks.
+        if (textFile !== null) {
+          window.URL.revokeObjectURL(textFile);
+        }
+
+        textFile = window.URL.createObjectURL(data);
+
+        return textFile;
       }
 
-      textFile = window.URL.createObjectURL(data);
+      function formatJsonObject(tableInfo) {
+        var jsonData = [],
+          headers = [];
+        tableInfo.forEach((x, i) => {
+          let item = {};
+          if (i == 1) {
+            headers[0] = x[0];
+            headers[1] = x[1];
+            return;
+          }
+          for (let index = 0; index < x.length; index++) {
+            const element = x[index];
+            if (element !== '') {
+              item = {
+                ...item,
+                [headers[index]]: element,
+              };
+            }
+          }
+          if (Object.keys(item).length !== 0) {
+            jsonData.push(item);
+          }
+        });
 
-      // returns a URL you can use as a href
-      return textFile;
-    };
-
-
-    axios.get(fileURL, { encoding: null }, function (err, res, data) {
-      if (err || res.statusCode != 200) {
-        console.log(res.statusCode);
-        return;
+        return JSON.stringify(jsonData);
       }
-      const buff = Buffer.from(data);
-      const workbook = XLSX.read(buff);
 
-      var sheet1 = workbook.Sheets[workbook.SheetNames[0]];
-      var sheet2 = workbook.Sheets[workbook.SheetNames[1]];
-      return sheet1;
-    }).then(async (data) => {
-      // let file = await makeTextFile(data.data);
-      // console.log(file);
-      console.log(data.data);
-    })
+      axios
+        .get(fileURL, { encoding: null }, (err, res, data) => {
+          if (res.status !== 200) {
+            console.log(res.status);
+            return;
+          }
+          const buff = Buffer.from(data);
+          const workbook = XLSX.read(buff);
 
+          var sheet1 = workbook.Sheets[workbook.SheetNames[0]];
+          var sheet2 = workbook.Sheets[workbook.SheetNames[1]];
+        })
+        .then((data) => {
+          const parser = new DOMParser();
+          const dom = parser.parseFromString(data.data, 'text/html');
 
+          var tableInfo = Array.prototype.map.call(
+            dom.querySelectorAll('table tr'),
+            function (tr) {
+              return Array.prototype.map.call(
+                tr.querySelectorAll('td'),
+                function (td) {
+                  return td.innerHTML;
+                }
+              );
+            }
+          );
+
+          var jsonData = formatJsonObject(tableInfo);
+          var element = document.getElementById('sheet1');
+          var obj = JSON.parse(jsonData);
+
+          element.innerHTML = JSON.stringify(obj, undefined, 2);
+          console.log(jsonData);
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    });
   </script>
 </body>
 
